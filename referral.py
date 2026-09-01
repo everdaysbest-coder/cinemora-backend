@@ -1,5 +1,6 @@
 """نظام الإحالة (Referrals)."""
 import secrets
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
@@ -22,6 +23,7 @@ async def _get_or_create_referral_doc(user_id):
     while await referrals_col.find_one({"code": code}):
         code = _generate_code()
     new_doc = {
+        "_id": str(uuid.uuid4()),
         "user_id": user_id,
         "code": code,
         "referred_count": 0,

@@ -19,6 +19,7 @@ load_dotenv()
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import admin
 import auth
 import cinema
 import community
@@ -57,6 +58,7 @@ api_router.include_router(cinema.router)
 api_router.include_router(projects.router)
 api_router.include_router(referral.router)
 api_router.include_router(community.router)
+api_router.include_router(admin.router)
 
 app.include_router(api_router)
 

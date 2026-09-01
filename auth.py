@@ -16,6 +16,7 @@
 """
 
 import os
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -33,6 +34,9 @@ EMERGENT_SESSION_DATA_URL = os.environ.get(
 )
 SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "cinemora_session")
 SESSION_TTL_DAYS = int(os.environ.get("SESSION_TTL_DAYS", "7"))
+ADMIN_EMAILS = {
+    e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()
+}
 
 
 @router.post("/session")
@@ -61,16 +65,27 @@ async def exchange_session(request: Request, response: Response):
         raise HTTPException(status_code=401, detail="استجابة مصادقة غير مكتملة")
 
     user = await users_col.find_one({"email": email})
+    is_admin_email = email.lower() in ADMIN_EMAILS
+
     if not user:
         user_doc = {
+            "_id": str(uuid.uuid4()),
             "email": email,
             "name": data.get("name"),
             "picture": data.get("picture"),
-            "tier": "free",
+            "tier": "admin" if is_admin_email else "free",
+            "role": "admin" if is_admin_email else "user",
+            "banned": False,
             "created_at": datetime.now(timezone.utc),
         }
-        insert_result = await users_col.insert_one(user_doc)
-        user = {**user_doc, "_id": insert_result.inserted_id}
+        await users_col.insert_one(user_doc)
+        user = user_doc
+    elif is_admin_email and user.get("role") != "admin":
+        # ترقية تلقائية لأي حساب يسجّل بإيميل مدرج ضمن ADMIN_EMAILS
+        await users_col.update_one(
+            {"_id": user["_id"]}, {"$set": {"role": "admin", "tier": "admin"}}
+        )
+        user["role"], user["tier"] = "admin", "admin"
 
     session_token = data.get("session_token") or os.urandom(24).hex()
     expires_at = datetime.now(timezone.utc) + timedelta(days=SESSION_TTL_DAYS)
@@ -102,6 +117,7 @@ async def exchange_session(request: Request, response: Response):
         "name": user.get("name"),
         "picture": user.get("picture"),
         "tier": user.get("tier", "free"),
+        "role": user.get("role", "user"),
         "referral_applied": referral_applied,
     }
 
@@ -116,6 +132,7 @@ async def me(request: Request):
         "name": current.get("name"),
         "picture": current.get("picture"),
         "tier": current.get("tier", "free"),
+        "role": current.get("role", "user"),
     }
 
 

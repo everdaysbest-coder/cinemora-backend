@@ -18,6 +18,9 @@ async def get_current_user(request: Request):
     session = await sessions_col.find_one({"session_token": token})
     if not session:
         return None
-    if session["expires_at"] < datetime.now(timezone.utc):
+    if session["expires_at"] < datetime.now(timezone.utc).isoformat():
         return None
-    return await users_col.find_one({"_id": session["user_id"]})
+    user = await users_col.find_one({"_id": session["user_id"]})
+    if user and user.get("banned"):
+        return None  # حساب محظور — يُعامل كأنه غير مسجّل دخول بأي نقطة نهاية
+    return user

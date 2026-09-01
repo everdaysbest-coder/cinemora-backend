@@ -19,6 +19,7 @@ LIMITS = {
     "starter": {"images": 50, "videos": 15},
     "creator": {"images": 200, "videos": 50},
     "pro": {"images": None, "videos": 200},
+    "admin": {"images": None, "videos": None},
 }
 
 
