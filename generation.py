@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from db import video_jobs_col
 import provider_fal as fal_provider
+import provider_huggingface as hf_provider
 import provider_pollinations as pollinations_provider
 from usage import check_and_increment_usage
 
@@ -67,11 +68,11 @@ async def generate_video(request: Request):
             job_doc["_fal_status_url"] = fal_result.get("_status_url")
             job_doc["_fal_response_url"] = fal_result.get("_response_url")
         else:
-            pollinations_result = await pollinations_provider.submit_video_job(
-                prompt, duration, aspect_ratio, resolution, model
-            )
-            job_doc["status"] = pollinations_result.get("status", "queued")
-            job_doc["_provider_job_id"] = pollinations_result.get("job_id")
+            # المسار المجاني: Hugging Face Inference API (استدعاء متزامن،
+            # يرجّع الفيديو مباشرة بدون job/polling حقيقي).
+            hf_result = await hf_provider.generate_video_sync(prompt)
+            job_doc["status"] = "completed"
+            job_doc["video_url"] = hf_result["video_base64"]
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"فشل إرسال مهمة الفيديو: {e}")
 
